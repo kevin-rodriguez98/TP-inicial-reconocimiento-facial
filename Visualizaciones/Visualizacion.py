@@ -100,9 +100,10 @@ def mostrar_menu():
         print("6 - Promedio diario de asignación de empleados por producto")
         print("7 - Promedio de horas trabajadas por empleado")
         print("8 - Intentos de fraude o irregularidades por empleado")
-        print("9 - Salir")
+        print("9 - Exportar datos a Excel")
+        print("10 - Salir")
 
-        opcion = input("Selecciona una opción (1-9): ")
+        opcion = input("Selecciona una opción (1-10): ")
 
         if opcion == "1":
             df_total_por_dia = df_produccion.groupby("Fecha")["CantidadProducida"].sum().reset_index()
@@ -178,6 +179,15 @@ def mostrar_menu():
             plt.show()
 
         elif opcion == "9":
+            # Exportar datos a Excel
+            nombre_archivo = "DatosProduccion_Empleados_Asistencia.xlsx"
+            with pd.ExcelWriter(nombre_archivo) as writer:
+                df_produccion.to_excel(writer, sheet_name="Produccion", index=False)
+                df_empleados.to_excel(writer, sheet_name="Empleados", index=False)
+                df_asistencia.to_excel(writer, sheet_name="Asistencia", index=False)
+            print(f"Datos exportados exitosamente a {nombre_archivo}")
+
+        elif opcion == "10":
             print("Saliendo del menú...")
             break
 
