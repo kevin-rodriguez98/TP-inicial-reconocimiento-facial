@@ -87,113 +87,101 @@ df_asistencia = pd.DataFrame(asistencia)
 df_produccion_expandida = df_produccion.explode("EmpleadosAsignados").rename(columns={"EmpleadosAsignados":"Legajo"})
 df_produccion_empleados = df_produccion_expandida.merge(df_empleados, on="Legajo", how="left")
 
-#  VISUALIZACIONES
+#  Menu
 
-# Producción total por día (todos los productos)
-df_total_por_dia = df_produccion.groupby("Fecha")["CantidadProducida"].sum().reset_index()
+def mostrar_menu():
+    while True:
+        print("\n--- MENÚ DE ANÁLISIS DE PRODUCCIÓN Y ASISTENCIA ---")
+        print("1 - Producción total diaria (todos los productos)")
+        print("2 - Producción promedio por producto")
+        print("3 - Desperdicio total vs producción efectiva")
+        print("4 - Porcentaje de desperdicio por producto")
+        print("5 - Promedio diario de producción por empleado")
+        print("6 - Promedio diario de asignación de empleados por producto")
+        print("7 - Promedio de horas trabajadas por empleado")
+        print("8 - Intentos de fraude o irregularidades por empleado")
+        print("9 - Salir")
 
-plt.figure(figsize=(10,5))
-sns.lineplot(
-    x="Fecha",
-    y="CantidadProducida",
-    data=df_total_por_dia,
-    marker="o",
-    color="teal"
-)
-plt.title("Producción total diaria (todos los productos)")
-plt.xlabel("Fecha")
-plt.ylabel("Cantidad Total Producida")
-plt.xticks(rotation=45)
-plt.show()
+        opcion = input("Selecciona una opción (1-9): ")
 
-# Producción total por producto
-df_promedio_producto = df_produccion.groupby("Producto")["CantidadProducida"].mean().reset_index()
+        if opcion == "1":
+            df_total_por_dia = df_produccion.groupby("Fecha")["CantidadProducida"].sum().reset_index()
+            plt.figure(figsize=(10,5))
+            sns.lineplot(x="Fecha", y="CantidadProducida", data=df_total_por_dia, marker="o", color="teal")
+            plt.title("Producción total diaria (todos los productos)")
+            plt.xlabel("Fecha")
+            plt.ylabel("Cantidad Total Producida")
+            plt.xticks(rotation=45)
+            plt.show()
 
-plt.figure(figsize=(10,5))
-sns.barplot(x="Producto", y="CantidadProducida", data=df_produccion, palette="Blues_d")
-plt.title("Promedio de producción por producto (10 días)")
-plt.ylabel("Cantidad Producida Promedio")
-plt.show()
+        elif opcion == "2":
+            df_promedio_producto = df_produccion.groupby("Producto")["CantidadProducida"].mean().reset_index()
+            plt.figure(figsize=(10,5))
+            sns.barplot(x="Producto", y="CantidadProducida", data=df_promedio_producto, palette="Blues_d")
+            plt.title("Promedio de producción por producto (10 días)")
+            plt.ylabel("Cantidad Producida Promedio")
+            plt.show()
 
-# promedio de horas trabajadas por empleado
-df_promedio_horas = df_asistencia.groupby("Legajo")["HorasTrabajadas"].mean().reset_index()
+        elif opcion == "3":
+            total_producido = df_produccion["CantidadProducida"].sum()
+            total_desperdicio = df_produccion["Desperdicio"].sum()
+            plt.figure(figsize=(6,6))
+            plt.pie([total_desperdicio, total_producido - total_desperdicio],
+                    labels=["Desperdicio", "Producción Efectiva"],
+                    autopct="%1.1f%%",
+                    colors=["red", "green"],
+                    startangle=90)
+            plt.title("Desperdicio Total vs Producción Total (10 días)")
+            plt.show()
 
-plt.figure(figsize=(10,5))
-sns.barplot(x="Legajo", y="HorasTrabajadas", data=df_promedio_horas, palette="Greens_d")
-plt.title("Promedio de horas trabajadas por empleado")
-plt.ylabel("Horas Trabajadas Promedio")
-plt.show()
+        elif opcion == "4":
+            df_desperdicio_producto = df_produccion.groupby("Producto")[["CantidadProducida","Desperdicio"]].sum().reset_index()
+            df_desperdicio_producto["PorcentajeDesperdicio"] = (df_desperdicio_producto["Desperdicio"] / df_desperdicio_producto["CantidadProducida"]) * 100
+            plt.figure(figsize=(10,6))
+            sns.barplot(x="Producto", y="PorcentajeDesperdicio", data=df_desperdicio_producto, palette="Reds_d")
+            plt.title("Porcentaje de Desperdicio por Producto (10 días)")
+            plt.ylabel("Porcentaje de Desperdicio (%)")
+            plt.ylim(0, max(df_desperdicio_producto["PorcentajeDesperdicio"])*1.2)
+            plt.show()
 
-# Desperdicio total vs producción total 
+        elif opcion == "5":
+            df_promedio_empleado = df_produccion_empleados.groupby(["Legajo","Nombre","Apellido"])["CantidadProducida"].mean().reset_index()
+            plt.figure(figsize=(10,5))
+            sns.barplot(x="Legajo", y="CantidadProducida", data=df_promedio_empleado, palette="Purples_d")
+            plt.title("Promedio diario de producción por empleado (10 días)")
+            plt.ylabel("Cantidad Producida Promedio")
+            plt.show()
 
-total_producido = df_produccion["CantidadProducida"].sum()
-total_desperdicio = df_produccion["Desperdicio"].sum()
+        elif opcion == "6":
+            df_empleado_producto = df_produccion_empleados.groupby(["Producto", "Nombre"])["IDProduccion"].count().reset_index()
+            df_empleado_producto.rename(columns={"IDProduccion": "VecesTrabajadas"}, inplace=True)
+            num_dias = df_produccion['Fecha'].nunique()
+            df_empleado_producto["PromedioDiario"] = df_empleado_producto["VecesTrabajadas"] / num_dias
+            plt.figure(figsize=(12,6))
+            sns.barplot(x="Producto", y="PromedioDiario", hue="Nombre", data=df_empleado_producto, palette="Set2")
+            plt.title("Promedio diario de asignación de empleados por producto")
+            plt.ylabel("Promedio de veces asignado por día")
+            plt.show()
 
-plt.figure(figsize=(6,6))
-plt.pie(
-    [total_desperdicio, total_producido - total_desperdicio],
-    labels=["Desperdicio", "Producción Efectiva"],
-    autopct="%1.1f%%",
-    colors=["red", "green"],
-    startangle=90
-)
-plt.title("Desperdicio Total vs Producción Total (10 días)")
-plt.show()
+        elif opcion == "7":
+            df_promedio_horas = df_asistencia.groupby("Legajo")["HorasTrabajadas"].mean().reset_index()
+            plt.figure(figsize=(10,5))
+            sns.barplot(x="Legajo", y="HorasTrabajadas", data=df_promedio_horas, palette="Greens_d")
+            plt.title("Promedio de horas trabajadas por empleado")
+            plt.ylabel("Horas Trabajadas Promedio")
+            plt.show()
 
-#  Porcentaje de desperdicio por producto 
-df_desperdicio_producto = df_produccion.groupby("Producto")[["CantidadProducida","Desperdicio"]].sum().reset_index()
-df_desperdicio_producto["PorcentajeDesperdicio"] = (df_desperdicio_producto["Desperdicio"] / df_desperdicio_producto["CantidadProducida"]) * 100
+        elif opcion == "8":
+            plt.figure(figsize=(10,5))
+            sns.countplot(x="Legajo", hue="IntentoFraude", data=df_asistencia, palette="Set1")
+            plt.title("Intentos de fraude o irregularidades por empleado")
+            plt.show()
 
-plt.figure(figsize=(10,6))
-sns.barplot(
-    x="Producto", 
-    y="PorcentajeDesperdicio", 
-    data=df_desperdicio_producto, 
-    palette="Reds_d"
-)
-plt.title("Porcentaje de Desperdicio por Producto (10 días)")
-plt.ylabel("Porcentaje de Desperdicio (%)")
-plt.ylim(0, max(df_desperdicio_producto["PorcentajeDesperdicio"])*1.2)
-plt.show()
+        elif opcion == "9":
+            print("Saliendo del menú...")
+            break
 
-# Producción por empleado
-df_promedio_empleado = df_produccion_empleados.groupby(
-    ["Legajo","Nombre","Apellido"]
-)["CantidadProducida"].mean().reset_index()
+        else:
+            print("Opción inválida, intenta nuevamente.")
 
-plt.figure(figsize=(10,5))
-sns.barplot(
-    x="Legajo",
-    y="CantidadProducida",
-    data=df_promedio_empleado,
-    palette="Purples_d"
-)
-plt.title("Promedio diario de producción por empleado (10 días)")
-plt.ylabel("Cantidad Producida Promedio")
-plt.show()
-
-df_empleado_producto = df_produccion_empleados.groupby(["Producto", "Nombre"])["IDProduccion"].count().reset_index()
-df_empleado_producto.rename(columns={"IDProduccion": "VecesTrabajadas"}, inplace=True)
-
-num_dias = df_produccion['Fecha'].nunique()
-df_empleado_producto["PromedioDiario"] = df_empleado_producto["VecesTrabajadas"] / num_dias
-
-# Grafico de promedio diario
-plt.figure(figsize=(12,6))
-sns.barplot(
-    x="Producto", 
-    y="PromedioDiario", 
-    hue="Nombre", 
-    data=df_empleado_producto, 
-    palette="Set2"
-)
-plt.title("Promedio diario de asignación de empleados por producto")
-plt.ylabel("Promedio de veces asignado por día")
-plt.show()
-
-# Intentos de fraude por empleado
-plt.figure(figsize=(10,5))
-sns.countplot(x="Legajo", hue="IntentoFraude", data=df_asistencia, palette="Set1")
-plt.title("Intentos de fraude o irregularidades por empleado")
-plt.show()
-
+mostrar_menu()
