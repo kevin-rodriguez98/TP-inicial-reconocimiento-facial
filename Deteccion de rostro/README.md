@@ -73,3 +73,8 @@ Pasos de unica vez:
 Comenzar con el reconocimiento facial:
 
     - Comenzar reconocimiento  -> click en boton: "Comenzar reconocimiento"
+
+--------------------------------------------------------------------------------------
+
+uvicorn src.app_api:app --reload
+levantar el backend primero y luego abrir index.html en el navegador.
