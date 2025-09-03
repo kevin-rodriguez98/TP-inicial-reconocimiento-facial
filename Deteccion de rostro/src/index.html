@@ -143,7 +143,7 @@
     // Esperar un frame para asegurar que el video está pintando
     await new Promise(r => requestAnimationFrame(r));
     // Pequeña espera adicional por seguridad
-    await new Promise(r => setTimeout(r, 120));
+    await new Promise(r => setTimeout(r, 2000));
 
     await detectFrameOnce();
 
@@ -180,7 +180,7 @@
       let ok = false;
 
       if (face.message && face.message.startsWith("✅")) {
-        // 3) Extraer nombre sin el (conf=…)
+        // 3) Extraer nombre 
         const m = /Validado:\s*([^(]+)\s*/.exec(face.message);
         const nombre = m ? m[1].trim() : "usuario";
         mensaje = `Persona identificada, bienvenido ${nombre}`;
