@@ -106,80 +106,101 @@
   const status = document.getElementById("status");
 
   let running = false;
+  let ready = false;
 
-  // Obtener cámara
+  // 1) Pedir cámara y setear tamaño real del canvas
   navigator.mediaDevices.getUserMedia({ video: true })
-    .then(stream => { video.srcObject = stream; })
-    .catch(err => { 
-      console.error(err); 
+    .then(async stream => {
+      video.srcObject = stream;
+
+      // Esperar a que el video tenga dimensiones reales
+      await new Promise(res => video.addEventListener('loadedmetadata', res, { once: true }));
+      // Ajustar el buffer del canvas al tamaño REAL del video
+      canvas.width  = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      ready = true;
+    })
+    .catch(err => {
+      console.error(err);
       status.textContent = "No se pudo acceder a la cámara";
       status.className = "error";
     });
 
-  btnStart.addEventListener("click", () => {
-    if (!running) {
-      running = true;
-      btnStart.disabled = true; 
-      video.style.display = "block";
-      canvas.style.display = "none";
-      status.textContent = "Detectando rostro, por favor alinee su cara...";
-      status.className = "";
-
-      // Espera 3 segundos
-      setTimeout(async () => {
-        await detectFrameOnce();
-        running = false;
-        btnStart.disabled = false;
-      }, 3000);
+  btnStart.addEventListener("click", async () => {
+    if (running) return;
+    if (!ready) {
+      status.textContent = "Inicializando cámara…";
+      return;
     }
+
+    running = true;
+    btnStart.disabled = true;
+    video.style.display = "block";
+    canvas.style.display = "none";
+    status.textContent = "Detectando rostro, por favor alinee su cara…";
+    status.className = "";
+
+    // Esperar un frame para asegurar que el video está pintando
+    await new Promise(r => requestAnimationFrame(r));
+    // Pequeña espera adicional por seguridad
+    await new Promise(r => setTimeout(r, 120));
+
+    await detectFrameOnce();
+
+    running = false;
+    btnStart.disabled = false;
   });
 
   async function detectFrameOnce() {
-    return new Promise(async (resolve) => {
+    // 2) Capturar con el tamaño real del canvas
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.9));
+
+    const form = new FormData();
+    form.append("file", blob, "frame.jpg");
+
+    try {
+      const res = await fetch("http://localhost:8000/detect", { method: "POST", body: form });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      // Mostrar canvas con el último frame y resaltar detección
+      video.style.display = "none";
+      canvas.style.display = "block";
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg"));
-      const form = new FormData();
-      form.append("file", blob, "frame.jpg");
 
-      try {
-        const res = await fetch("http://localhost:8000/detect", { method: "POST", body: form });
-        const data = await res.json();
-
-        video.style.display = "none";
-        canvas.style.display = "block";
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        if (!data.faces || data.faces.length === 0) {
-          status.textContent = "Persona no identificada";
-          status.className = "error";
-        } else {
-          const face = data.faces[0];
-          let mensaje = "Persona no identificada";
-
-          if (face.message.startsWith("✅")) {
-            const nombre = face.message.split(":")[1].trim();
-            mensaje = `Persona identificada, bienvenido ${nombre}`;
-            status.className = "success";
-          } else {
-            status.className = "error";
-          }
-
-          status.textContent = mensaje;
-
-          ctx.strokeStyle = face.message.startsWith("✅") ? "green" : "red";
-          ctx.lineWidth = 3;
-          ctx.strokeRect(face.x, face.y, face.w, face.h);
-          ctx.font = "18px 'JetBrains Mono', monospace";
-          ctx.fillStyle = ctx.strokeStyle;
-          ctx.fillText(mensaje, face.x, Math.max(20, face.y - 10));
-        }
-      } catch(e) {
-        console.error(e);
-        status.textContent = "Error, intente de nuevo";
+      if (!data.faces || data.faces.length === 0) {
+        status.textContent = "Persona no identificada";
         status.className = "error";
+        return;
       }
-      resolve();
-    });
+
+      const face = data.faces[0];
+      let mensaje = "Persona no identificada";
+      let ok = false;
+
+      if (face.message && face.message.startsWith("✅")) {
+        // 3) Extraer nombre sin el (conf=…)
+        const m = /Validado:\s*([^(]+)\s*/.exec(face.message);
+        const nombre = m ? m[1].trim() : "usuario";
+        mensaje = `Persona identificada, bienvenido ${nombre}`;
+        ok = true;
+      }
+
+      status.textContent = mensaje;
+      status.className = ok ? "success" : "error";
+
+      ctx.strokeStyle = ok ? "green" : "red";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(face.x, face.y, face.w, face.h);
+      ctx.font = "18px 'JetBrains Mono', monospace";
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.fillText(mensaje, face.x, Math.max(20, face.y - 10));
+    } catch (e) {
+      console.error(e);
+      status.textContent = "Error, intente de nuevo";
+      status.className = "error";
+    }
   }
 </script>
 </body>
