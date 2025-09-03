@@ -177,13 +177,15 @@
 
       const face = data.faces[0];
       let mensaje = "Persona no identificada";
+      let mensajeRostro = "Rostro no identificado"
       let ok = false;
 
       if (face.message && face.message.startsWith("✅")) {
         // 3) Extraer nombre 
         const m = /Validado:\s*([^(]+)\s*/.exec(face.message);
         const nombre = m ? m[1].trim() : "usuario";
-        mensaje = `Persona identificada, bienvenido ${nombre}`;
+        mensaje = `Persona identificada. Bienvenido ${nombre}`;
+        mensajeRostro =  `${nombre}`
         ok = true;
       }
 
@@ -195,7 +197,7 @@
       ctx.strokeRect(face.x, face.y, face.w, face.h);
       ctx.font = "18px 'JetBrains Mono', monospace";
       ctx.fillStyle = ctx.strokeStyle;
-      ctx.fillText(mensaje, face.x, Math.max(20, face.y - 10));
+      ctx.fillText(mensajeRostro, face.x, Math.max(20, face.y - 10));
     } catch (e) {
       console.error(e);
       status.textContent = "Error, intente de nuevo";
