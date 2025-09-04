@@ -27,6 +27,9 @@
     font-size: 18px;
     color: #8fc6b2;
     border-bottom: 10px solid #3F5259;
+    display: flex;               
+    align-items: center;          
+    justify-content: space-between; 
   }
 
   main {
@@ -47,16 +50,27 @@
     border-radius: 30px;
   }
 
-    #btnStart {
-        font-family: 'JetBrains Mono', monospace;
-        margin-top: 20px;
-        padding: 26px 100px;
-        background-color: #8fc6b2;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 20px;
-    }
+  #btnStart {
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 20px;
+      padding: 26px 100px;
+      background-color: #8fc6b2;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 20px;
+  }
+
+  #btnVerRegistros {
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 20px;
+      padding: 5px 20px;
+      background-color: #8fc6b2;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+  }
     
   #status {
     font-family: 'JetBrains Mono', monospace;
@@ -88,6 +102,9 @@
 <body>
 <header>
   Logo / nombre pyme
+  <button id="btnVerRegistros" onclick="location.href='registros.html'">
+  Ver registros del día
+</button>
 </header>
 
 <main>
@@ -104,6 +121,7 @@
   const ctx = canvas.getContext("2d");
   const btnStart = document.getElementById("btnStart");
   const status = document.getElementById("status");
+  const API_BASE = location.origin;
 
   let running = false;
   let ready = false;
@@ -160,7 +178,7 @@
     form.append("file", blob, "frame.jpg");
 
     try {
-      const res = await fetch("http://localhost:8000/detect", { method: "POST", body: form });
+      const res = await fetch(`${API_BASE}/detect`, { method: "POST", body: form });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
