@@ -58,11 +58,9 @@ async def detect_face(file: UploadFile = File(...)):
                 emp_id, emp_name = db.parse_label(label_txt)
                 event = db.infer_event_type(emp_id)
 
-                #if emp_id and not db.last_attendance_within(emp_id, minutes=0):
                 rowid = db.save_attendance(emp_id, emp_name, event)
                 saved = True
                 print(f"[DB] attendance id={rowid} emp={emp_id} {emp_name} {event}")
-                #else: print("[DB] duplicado evitado")
 
         response.append({"x": int(x), "y": int(y), "w": int(w), "h": int(h), "message": msg, "saved": saved, "employee_id": emp_id, "employee_name": emp_name, "event":event})
 

@@ -1,7 +1,7 @@
 Reconocimiento Facial con OpenCV y Gradio
 
 Este proyecto es un prototipo de control de asistencia para una PYME alimenticia.
-Utiliza OpenCV para la detección y validación de rostros mediante el algoritmo LBPH (Local Binary Patterns Histograms) y una interfaz web construida con Gradio.
+Utiliza OpenCV para la detección y validación de rostros mediante el algoritmo LBPH (Local Binary Patterns Histograms).
 
 🚀 ¿Cómo funciona?
 
@@ -45,36 +45,34 @@ Estructura del Proyecto
 
     2 Entrená el modelo:
 
-        python -m src.enroll_lbph
+        python -m src.utils.enroll_lbph
         
         se generaran los archivos data/modelos/lbph.yml y data/modelos/label_map.npy
 
 
 ▶️ Cómo levantar la aplicación
 
-    1 Desde la raíz del proyecto, ejecutá:
+    1 Desde la raíz de Deteccion de rostro, ejecutá:
 
-    - python -m src.app_gradio
+        $  uvicorn src.main:app --reload
+        Por defecto, la aplicación se abre en local: http://127.0.0.1:8000/app
 
-    2 Por defecto, la aplicación se abre en:
+    2 Levantar en Ngrok
 
-    - http://127.0.0.1:7860
+        $ ngrok http 8000
+        se proporciona un URL de ngrok ej: https://c034727d6c74.ngrok-free.app/app
+    
 
 Como inicar el reconocimiento facial en el navegador:
 
-Pasos de unica vez: 
+Pasos reconocimiento: 
 
     1 Brindar permisos de camara
 
-    2 Encender camara -> click en "Click to Access WebCam"
+    2 Comenzar reconocimiento -> click en "Iniciar reconocimiento facial"
 
-    3 Iniciar capura de imagen -> click "Grabar"
+Verificacion de registros:
 
-Comenzar con el reconocimiento facial:
-
-    - Comenzar reconocimiento  -> click en boton: "Comenzar reconocimiento"
+    Para ver los registro del dia -> click en boton: "Ver registros del dia"
 
 --------------------------------------------------------------------------------------
-
-uvicorn src.app_api:app --reload
-levantar el backend primero y luego abrir index.html en el navegador.

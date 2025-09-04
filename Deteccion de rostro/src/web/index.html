@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <title>Reconocimiento Facial PYME</title>
 
-<!-- Cargar fuente JetBrains Mono desde Google Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
@@ -46,7 +45,7 @@
     width: 640px;
     height: 480px;
     background-color: #aaa;
-    display: none; /* ambos ocultos inicialmente */
+    display: none; 
     border-radius: 30px;
   }
 
@@ -126,14 +125,11 @@
   let running = false;
   let ready = false;
 
-  // 1) Pedir cámara y setear tamaño real del canvas
   navigator.mediaDevices.getUserMedia({ video: true })
     .then(async stream => {
       video.srcObject = stream;
 
-      // Esperar a que el video tenga dimensiones reales
       await new Promise(res => video.addEventListener('loadedmetadata', res, { once: true }));
-      // Ajustar el buffer del canvas al tamaño REAL del video
       canvas.width  = video.videoWidth || 640;
       canvas.height = video.videoHeight || 480;
       ready = true;
@@ -158,9 +154,7 @@
     status.textContent = "Detectando rostro, por favor alinee su cara…";
     status.className = "";
 
-    // Esperar un frame para asegurar que el video está pintando
     await new Promise(r => requestAnimationFrame(r));
-    // Pequeña espera adicional por seguridad
     await new Promise(r => setTimeout(r, 2000));
 
     await detectFrameOnce();
@@ -170,7 +164,6 @@
   });
 
   async function detectFrameOnce() {
-    // 2) Capturar con el tamaño real del canvas
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.9));
 
@@ -182,7 +175,6 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
-      // Mostrar canvas con el último frame y resaltar detección
       video.style.display = "none";
       canvas.style.display = "block";
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -199,7 +191,6 @@
       let ok = false;
 
       if (face.message && face.message.startsWith("✅")) {
-        // 3) Extraer nombre 
         const m = /Validado:\s*([^(]+)\s*/.exec(face.message);
         const nombre = m ? m[1].trim() : "usuario";
         mensaje = `Persona identificada. Bienvenido ${nombre}`;

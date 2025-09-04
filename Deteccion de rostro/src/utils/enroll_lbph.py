@@ -1,4 +1,3 @@
-# src/enroll_lbph.py
 import os, cv2, numpy as np
 from pathlib import Path
 
@@ -13,12 +12,12 @@ def load_images_and_labels():
     for person_dir in sorted(DATA_DIR.iterdir()):
         if not person_dir.is_dir():
             continue
-        label_map[current_label] = person_dir.name  # "101_Juan_Perez"
+        label_map[current_label] = person_dir.name
         for img_path in person_dir.glob("*.*"):
             img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
             if img is None:
                 continue
-            # Detección rápida para recortar cara (Haar)
+            # Detección cara 
             face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
             faces = face_cascade.detectMultiScale(img, 1.2, 5)
             if len(faces) == 0:
@@ -35,7 +34,7 @@ def main():
     if len(images) == 0:
         raise RuntimeError("No se encontraron rostros en data/empleados/*")
 
-    recognizer = cv2.face.LBPHFaceRecognizer_create(radius=1, neighbors=8, grid_x=8, grid_y=8)
+    recognizer = cv2.face.LBPHFaceRecognizer_create(radius=1, neighbors=10, grid_x=8, grid_y=8)
     recognizer.train(images, labels)
     recognizer.write(str(MODEL_PATH))
 
