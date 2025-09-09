@@ -45,9 +45,9 @@ async def detect_face(file: UploadFile = File(...)):
         roi_gray = gray[y:y+h, x:x+w]
         msg = "❌ Persona no reconocida"
         saved = False 
-        emp_id = None
-        emp_name = None
-        event = None  
+        legajo = None
+        nombre = None
+        evento = None  
         if recognizer and label_map:
             roi_resized = cv2.resize(roi_gray, (200, 200))
             label_id, conf = recognizer.predict(roi_resized)
@@ -55,14 +55,14 @@ async def detect_face(file: UploadFile = File(...)):
             if label_id in label_map and conf < 80:
                 label_txt = label_map[label_id] 
                 msg = f"✅ Validado: {label_txt} (conf={conf:.1f})"
-                emp_id, emp_name = db.parse_label(label_txt)
-                event = db.infer_event_type(emp_id)
+                legajo, nombre = db.parse_label(label_txt)
+                evento = db.infer_event_type(legajo)
 
-                rowid = db.save_attendance(emp_id, emp_name, event)
+                rowid = db.save_attendance(legajo, nombre, evento)
                 saved = True
-                print(f"[DB] attendance id={rowid} emp={emp_id} {emp_name} {event}")
+                print(f"[DB] attendance id={rowid} emp={legajo} {nombre} {evento}")
 
-        response.append({"x": int(x), "y": int(y), "w": int(w), "h": int(h), "message": msg, "saved": saved, "employee_id": emp_id, "employee_name": emp_name, "event":event})
+        response.append({"x": int(x), "y": int(y), "w": int(w), "h": int(h), "message": msg, "saved": saved, "nombre": legajo, "nombre": nombre, "event":evento})
 
     return {"faces": response}
 

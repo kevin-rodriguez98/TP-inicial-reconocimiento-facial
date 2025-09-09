@@ -192,7 +192,7 @@
 
       if (face.message && face.message.startsWith("✅")) {
         const m = /Validado:\s*([^(]+)\s*/.exec(face.message);
-        const nombre = m ? m[1].trim() : "usuario";
+        const nombre = face.nombre;
         mensaje = `Persona identificada. Bienvenido ${nombre}`;
         mensajeRostro =  `${nombre}`
         ok = true;

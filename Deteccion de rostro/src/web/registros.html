@@ -98,10 +98,10 @@
       data.forEach(r => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${r.employee_id || "-"}</td>
-          <td>${r.employee_name || "-"}</td>
+          <td>${r.legajo || "-"}</td>
+          <td>${r.nombre || "-"}</td>
           <td>${new Date(r.ts_local || r.ts_utc).toLocaleTimeString()}</td>
-          <td>${r.event || "-"}</td>
+          <td>${r.evento || "-"}</td>
         `;
         tbody.appendChild(tr);
       });
