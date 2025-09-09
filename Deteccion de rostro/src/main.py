@@ -1,4 +1,5 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import cv2, numpy as np
 from pathlib import Path
@@ -69,3 +70,111 @@ async def detect_face(file: UploadFile = File(...)):
 @app.get("/attendance/today")
 def attendance_today():
     return db.fetch_attendance_today()
+
+@app.get("/metrics/attendance/today")
+def attendance_today():
+    conn = db.get_conn()
+    try:
+        total = conn.execute("SELECT COUNT(*) FROM empleados").fetchone()[0]
+        presentes = conn.execute("""
+            SELECT COUNT(DISTINCT id_empleado)
+            FROM registros
+            WHERE DATE(ts_utc) = DATE('now') AND evento = 'INGRESO'
+        """).fetchone()[0]
+        return {
+            "total": total,
+            "presentes": presentes,
+            "ausentes": total - presentes
+        }
+    finally:
+        conn.close()
+
+@app.get("/metrics/attendance/last10")
+def attendance_last10():
+    conn = db.get_conn()
+    try:
+        total = conn.execute("SELECT COUNT(*) FROM empleados").fetchone()[0]
+        rows = conn.execute("""
+            WITH base AS (
+              SELECT DATE(ts_utc) as fecha, id_empleado
+              FROM registros
+              WHERE evento = 'INGRESO'
+              GROUP BY fecha, id_empleado
+            )
+            SELECT fecha, COUNT(id_empleado) as presentes
+            FROM base
+            WHERE fecha >= DATE('now', '-9 days')
+            GROUP BY fecha
+            ORDER BY fecha
+        """).fetchall()
+
+        out = []
+        for fecha, presentes in rows:
+            out.append({
+                "fecha": fecha,
+                "presentes": presentes,
+                "ausentes": total - presentes
+            })
+        return out
+    finally:
+        conn.close()
+
+class EmpleadoIn(BaseModel):
+    legajo: int
+    nombre: str
+    apellido: str
+    dni: str
+    puesto: str
+    turno: str
+    sector: str
+
+@app.post("/empleados")
+def add_empleado(emp: EmpleadoIn):
+    conn = db.get_conn()
+    try:
+        cur = conn.execute(
+            """
+            INSERT INTO empleados (legajo, nombre, apellido, dni, puesto, turno, sector)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (emp.legajo, emp.nombre, emp.apellido, emp.dni, emp.puesto, emp.turno, emp.sector)
+        )
+        return {"id": cur.lastrowid, "message": "Empleado agregado correctamente"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al insertar: {str(e)}")
+    finally:
+        conn.close()
+
+class RegistroIn(BaseModel):
+    legajo: int
+    evento: str  # "INGRESO" o "EGRESO"
+    ts_utc: str | None = None  # opcional, formato ISO8601: "2025-09-09T08:30:00"
+
+@app.post("/registros")
+def add_registro(reg: RegistroIn):
+    if reg.evento not in ("INGRESO", "EGRESO"):
+        raise HTTPException(status_code=400, detail="Evento debe ser 'INGRESO' o 'EGRESO'")
+
+    # Usar timestamp enviado o el actual
+    try:
+        ts = reg.ts_utc or datetime.utcnow().isoformat(timespec="seconds")
+
+        # Insertar manualmente en la DB (similar a save_attendance pero con ts forzado)
+        conn = db.get_conn()
+        try:
+            id_empleado = db._ensure_empleado_by_legajo(reg.legajo, "")
+            cur = conn.execute(
+                "INSERT INTO registros (id_empleado, ts_utc, evento) VALUES (?, ?, ?)",
+                (id_empleado, ts, reg.evento)
+            )
+            return {
+                "id_registro": cur.lastrowid,
+                "legajo": reg.legajo,
+                "evento": reg.evento,
+                "ts_utc": ts,
+                "message": "Registro agregado correctamente"
+            }
+        finally:
+            conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al insertar: {str(e)}")

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Dashboard de Asistencia</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --brand: #3F5259;
+    --accent: #8fc6b2;
+    --bg: #f6f8fa;
+    --card: #fff;
+    --text: #111;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg); color: var(--text);
+  }
+  header {
+    background: #2f3b3c; color: #8fc6b2;
+    padding: 18px 20px; border-bottom: 10px solid var(--brand);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    padding: 10px 18px; background: var(--accent);
+    color: #000; border: none; border-radius: 8px; cursor: pointer;
+    font-size: 16px;
+  }
+  main { padding: 20px; max-width: 1100px; margin: 0 auto; }
+  h1 { margin: 0 0 12px; color: var(--brand); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card {
+    background: var(--card); border-radius: 12px; padding: 16px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.08);
+  }
+  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .kpi {
+    background: #f0f4f5; border-radius: 10px; padding: 16px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .kpi label { color: #555; font-size: 14px; }
+  .kpi .value { font-size: 32px; font-weight: bold; }
+  .muted { color: #777; font-size: 13px; }
+  canvas { width: 100% !important; height: 320px !important; }
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+    .kpis { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>Dashboard de Asistencia</div>
+  <div>
+    <button class="btn" onclick="location.href='index.html'">⬅ Volver</button>
+  </div>
+</header>
+
+<main>
+  <h1>Indicadores</h1>
+
+  <!-- KPIs del día -->
+  <div class="card">
+    <h3>Asistencia de hoy</h3>
+    <div class="kpis">
+      <div class="kpi">
+        <label>Presentes</label>
+        <div id="kpiPresentes" class="value">-</div>
+        <div id="kpiPresentesPct" class="muted">—</div>
+      </div>
+      <div class="kpi">
+        <label>Ausentes</label>
+        <div id="kpiAusentes" class="value">-</div>
+        <div id="kpiAusentesPct" class="muted">—</div>
+      </div>
+    </div>
+    <div class="muted" id="kpiFootnote" style="margin-top:8px;">Actualizando…</div>
+  </div>
+
+  <!-- Barras apiladas últimos 10 días -->
+  <div class="card" style="margin-top:16px;">
+    <h3>Asistencia últimos 10 días</h3>
+    <canvas id="chartLast10"></canvas>
+  </div>
+</main>
+
+<script>
+  const API_BASE = `${location.protocol}//${location.hostname}:8000`;
+
+  // ---------- KPIs del día ----------
+  async function loadToday() {
+    const elPres = document.getElementById('kpiPresentes');
+    const elAus  = document.getElementById('kpiAusentes');
+    const elPresPct = document.getElementById('kpiPresentesPct');
+    const elAusPct  = document.getElementById('kpiAusentesPct');
+    const foot = document.getElementById('kpiFootnote');
+
+    try {
+      const r = await fetch(`${API_BASE}/metrics/attendance/today`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      const total = d.total ?? 0;
+      const presentes = d.presentes ?? 0;
+      const ausentes = d.ausentes ?? Math.max(0, total - presentes);
+
+      elPres.textContent = presentes;
+      elAus.textContent  = ausentes;
+
+      const pPres = total ? Math.round((presentes/total)*100) : 0;
+      const pAus  = total ? Math.round((ausentes/total)*100) : 0;
+      elPresPct.textContent = total ? `${pPres}% del total (${total})` : '—';
+      elAusPct.textContent  = total ? `${pAus}% del total (${total})`  : '—';
+
+      const now = new Date();
+      foot.textContent = `Última actualización: ${now.toLocaleString()}`;
+    } catch (e) {
+      console.error(e);
+      elPres.textContent = '-';
+      elAus.textContent  = '-';
+      elPresPct.textContent = '—';
+      elAusPct.textContent  = '—';
+      foot.textContent = 'No se pudo cargar la asistencia de hoy.';
+    }
+  }
+
+  // ---------- Gráfico últimos 10 días ----------
+  let chartLast10;
+  async function loadLast10() {
+    try {
+      const r = await fetch(`${API_BASE}/metrics/attendance/last10`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+
+      // Asegurar 10 días ordenados por fecha
+      const labels = data.map(x => x.fecha);
+      const presentes = data.map(x => x.presentes ?? 0);
+      const ausentes  = data.map(x => x.ausentes  ?? 0);
+
+      const ctx = document.getElementById('chartLast10').getContext('2d');
+      if (chartLast10) chartLast10.destroy();
+      chartLast10 = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Presentes', data: presentes, backgroundColor: 'rgba(80, 180, 120, 0.85)' },
+            { label: 'Ausentes',  data: ausentes,  backgroundColor: 'rgba(230, 80, 80, 0.85)' }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { stacked: true },
+            y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                footer: (items) => {
+                  // total = presentes + ausentes en ese día
+                  const idx = items[0].dataIndex;
+                  const total = (presentes[idx] ?? 0) + (ausentes[idx] ?? 0);
+                  return `Total: ${total}`;
+                }
+              }
+            },
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    } catch (e) {
+      console.error(e);
+      // Si falla, no hacemos nada más; el área del gráfico queda vacía.
+    }
+  }
+
+  async function init() {
+    await Promise.all([loadToday(), loadLast10()]);
+    // Auto-refresh liviano cada 30s (podés ajustar o quitar)
+    setInterval(loadToday, 30000);
+  }
+  init();
+</script>
+</body>
+</html>
