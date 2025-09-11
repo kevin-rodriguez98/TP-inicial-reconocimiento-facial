@@ -1,144 +1,243 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-<meta charset="UTF-8" />
-<title>Dashboard de Asistencia</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-  :root {
-    --brand: #3F5259;
-    --accent: #8fc6b2;
-    --bg: #f6f8fa;
-    --card: #fff;
-    --text: #111;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; padding: 0;
-    font-family: 'JetBrains Mono', monospace;
-    background: var(--bg); color: var(--text);
-  }
-  header {
-    background: #2f3b3c; color: #8fc6b2;
-    padding: 18px 20px; border-bottom: 10px solid var(--brand);
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .btn {
-    font-family: 'JetBrains Mono', monospace;
-    padding: 10px 18px; background: var(--accent);
-    color: #000; border: none; border-radius: 8px; cursor: pointer;
-    font-size: 16px;
-  }
-  main { padding: 20px; max-width: 1100px; margin: 0 auto; }
-  h1 { margin: 0 0 12px; color: var(--brand); }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .card {
-    background: var(--card); border-radius: 12px; padding: 16px;
-    box-shadow: 0 2px 6px rgba(0,0,0,.08);
-  }
-  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .kpi {
-    background: #f0f4f5; border-radius: 10px; padding: 16px;
-    display: flex; flex-direction: column; gap: 8px;
-  }
-  .kpi label { color: #555; font-size: 14px; }
-  .kpi .value { font-size: 32px; font-weight: bold; }
-  .muted { color: #777; font-size: 13px; }
-  canvas { width: 100% !important; height: 320px !important; }
-  @media (max-width: 900px) {
-    .grid { grid-template-columns: 1fr; }
-    .kpis { grid-template-columns: 1fr; }
-  }
-</style>
-</head>
-<body>
-<header>
-  <div>Dashboard de Asistencia</div>
-  <div>
-    <button class="btn" onclick="location.href='index.html'">⬅ Volver</button>
-  </div>
-</header>
-
-<main>
-  <h1>Indicadores</h1>
-
-  <!-- KPIs del día -->
-  <div class="card">
-    <h3>Asistencia de hoy</h3>
-    <div class="kpis">
-      <div class="kpi">
-        <label>Presentes</label>
-        <div id="kpiPresentes" class="value">-</div>
-        <div id="kpiPresentesPct" class="muted">—</div>
-      </div>
-      <div class="kpi">
-        <label>Ausentes</label>
-        <div id="kpiAusentes" class="value">-</div>
-        <div id="kpiAusentesPct" class="muted">—</div>
-      </div>
-    </div>
-    <div class="muted" id="kpiFootnote" style="margin-top:8px;">Actualizando…</div>
-  </div>
-
-  <!-- Barras apiladas últimos 10 días -->
-  <div class="card" style="margin-top:16px;">
-    <h3>Asistencia últimos 10 días</h3>
-    <canvas id="chartLast10"></canvas>
-  </div>
-</main>
-
-<script>
-  const API_BASE = `${location.protocol}//${location.hostname}:8000`;
-
-  // ---------- KPIs del día ----------
-  async function loadToday() {
-    const elPres = document.getElementById('kpiPresentes');
-    const elAus  = document.getElementById('kpiAusentes');
-    const elPresPct = document.getElementById('kpiPresentesPct');
-    const elAusPct  = document.getElementById('kpiAusentesPct');
-    const foot = document.getElementById('kpiFootnote');
-
-    try {
-      const r = await fetch(`${API_BASE}/metrics/attendance/today`);
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const d = await r.json();
-      const total = d.total ?? 0;
-      const presentes = d.presentes ?? 0;
-      const ausentes = d.ausentes ?? Math.max(0, total - presentes);
-
-      elPres.textContent = presentes;
-      elAus.textContent  = ausentes;
-
-      const pPres = total ? Math.round((presentes/total)*100) : 0;
-      const pAus  = total ? Math.round((ausentes/total)*100) : 0;
-      elPresPct.textContent = total ? `${pPres}% del total (${total})` : '—';
-      elAusPct.textContent  = total ? `${pAus}% del total (${total})`  : '—';
-
-      const now = new Date();
-      foot.textContent = `Última actualización: ${now.toLocaleString()}`;
-    } catch (e) {
-      console.error(e);
-      elPres.textContent = '-';
-      elAus.textContent  = '-';
-      elPresPct.textContent = '—';
-      elAusPct.textContent  = '—';
-      foot.textContent = 'No se pudo cargar la asistencia de hoy.';
+  <meta charset="UTF-8" />
+  <title>Dashboard de Asistencia</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --brand: #3F5259;
+      --accent: #8fc6b2;
+      --bg: #f6f8fa;
+      --card: #fff;
+      --text: #111;
     }
-  }
 
-  // ---------- Gráfico últimos 10 días ----------
-  let chartLast10;
-  async function loadLast10() {
-    try {
-      const r = await fetch(`${API_BASE}/metrics/attendance/last10`);
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = await r.json();
+    * {
+      box-sizing: border-box;
+    }
 
-      // Asegurar 10 días ordenados por fecha
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      background: #2f3b3c;
+      color: #8fc6b2;
+      padding: 18px 20px;
+      border-bottom: 10px solid var(--brand);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn {
+      font-family: 'JetBrains Mono', monospace;
+      padding: 10px 18px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    main {
+      padding: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      color: var(--brand);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+      margin-top: 16px;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .kpi {
+      background: #f0f4f5;
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .kpi label {
+      color: #555;
+      font-size: 14px;
+    }
+
+    .kpi .value {
+      font-size: 32px;
+      font-weight: bold;
+    }
+
+    .muted {
+      color: #777;
+      font-size: 13px;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 320px !important;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div>Dashboard de Asistencia</div>
+    <div>
+      <button class="btn" onclick="location.href='index.html'">⬅ Volver</button>
+    </div>
+  </header>
+
+  <main>
+    <h1>Indicadores</h1>
+
+    <!-- KPIs del día -->
+    <div class="card">
+      <h3>Asistencia de hoy</h3>
+      <div class="kpis">
+        <div class="kpi">
+          <label>Presentes</label>
+          <div id="kpiPresentes" class="value">-</div>
+          <div id="kpiPresentesPct" class="muted">—</div>
+        </div>
+        <div class="kpi">
+          <label>Ausentes</label>
+          <div id="kpiAusentes" class="value">-</div>
+          <div id="kpiAusentesPct" class="muted">—</div>
+        </div>
+      </div>
+      <div class="muted" id="kpiFootnote" style="margin-top:8px;">Actualizando…</div>
+    </div>
+
+    <!-- Barras apiladas últimos 10 días -->
+    <div class="card">
+      <h3>Asistencia últimos 10 días</h3>
+      <canvas id="chartLast10"></canvas>
+      <button class="btn" style="margin-top:10px;" onclick="downloadChart(chartLast10, 'asistencia_ultimos10.png')">Descargar gráfico</button>
+    </div>
+
+    <!-- Horas trabajadas ultimos 10 días -->
+    <div class="card">
+      <h3>Horas trabajadas últimos 10 días</h3>
+      <canvas id="chartHoras"></canvas>
+      <button class="btn" style="margin-top:10px;" onclick="downloadChart(chartHoras, 'horas_trabajadas_ultimos10.png')">Descargar gráfico</button>
+    </div>
+  </main>
+
+  <script>
+    const API_BASE = `${location.protocol}//${location.hostname}:8000`;
+
+    // ---------- KPIs del día ----------
+    async function loadToday() {
+      const elPres = document.getElementById('kpiPresentes');
+      const elAus = document.getElementById('kpiAusentes');
+      const elPresPct = document.getElementById('kpiPresentesPct');
+      const elAusPct = document.getElementById('kpiAusentesPct');
+      const foot = document.getElementById('kpiFootnote');
+
+      const defaultData = { total: 30, presentes: 25, ausentes: 5 };
+
+      try {
+        const r = await fetch(`${API_BASE}/metrics/attendance/today`);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const d = await r.json();
+
+        const total = d.total ?? defaultData.total;
+        const presentes = d.presentes ?? defaultData.presentes;
+        const ausentes = d.ausentes ?? Math.max(0, total - presentes);
+
+        elPres.textContent = presentes;
+        elAus.textContent = ausentes;
+
+        const pPres = total ? Math.round((presentes / total) * 100) : 0;
+        const pAus = total ? Math.round((ausentes / total) * 100) : 0;
+        elPresPct.textContent = total ? `${pPres}% del total (${total})` : '—';
+        elAusPct.textContent = total ? `${pAus}% del total (${total})` : '—';
+
+        const now = new Date();
+        foot.textContent = `Última actualización: ${now.toLocaleString()}`;
+      } catch (e) {
+        console.error(e);
+        elPres.textContent = defaultData.presentes;
+        elAus.textContent = defaultData.ausentes;
+        elPresPct.textContent = `${Math.round((defaultData.presentes / defaultData.total) * 100)}% del total (${defaultData.total})`;
+        elAusPct.textContent = `${Math.round((defaultData.ausentes / defaultData.total) * 100)}% del total (${defaultData.total})`;
+        foot.textContent = 'Datos por defecto (no se pudo cargar la API).';
+      }
+    }
+
+    // ---------- Gráfico últimos 10 días ----------
+    let chartLast10;
+    async function loadLast10() {
+      const defaultData = [
+        { fecha: '2025-08-30', presentes: 20, ausentes: 10 },
+        { fecha: '2025-08-31', presentes: 18, ausentes: 12 },
+        { fecha: '2025-09-01', presentes: 25, ausentes: 5 },
+        { fecha: '2025-09-02', presentes: 27, ausentes: 3 },
+        { fecha: '2025-09-03', presentes: 22, ausentes: 8 },
+        { fecha: '2025-09-04', presentes: 26, ausentes: 4 },
+        { fecha: '2025-09-05', presentes: 24, ausentes: 6 },
+        { fecha: '2025-09-06', presentes: 28, ausentes: 2 },
+        { fecha: '2025-09-07', presentes: 23, ausentes: 7 },
+        { fecha: '2025-09-08', presentes: 21, ausentes: 9 },
+      ];
+
+      try {
+        const r = await fetch(`${API_BASE}/metrics/attendance/last10`);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+
+        renderChartLast10(data.length ? data : defaultData);
+      } catch (e) {
+        console.error(e);
+        renderChartLast10(defaultData);
+      }
+    }
+
+    function renderChartLast10(data) {
       const labels = data.map(x => x.fecha);
       const presentes = data.map(x => x.presentes ?? 0);
-      const ausentes  = data.map(x => x.ausentes  ?? 0);
+      const ausentes = data.map(x => x.ausentes ?? 0);
 
       const ctx = document.getElementById('chartLast10').getContext('2d');
       if (chartLast10) chartLast10.destroy();
@@ -148,7 +247,7 @@
           labels,
           datasets: [
             { label: 'Presentes', data: presentes, backgroundColor: 'rgba(80, 180, 120, 0.85)' },
-            { label: 'Ausentes',  data: ausentes,  backgroundColor: 'rgba(230, 80, 80, 0.85)' }
+            { label: 'Ausentes', data: ausentes, backgroundColor: 'rgba(230, 80, 80, 0.85)' }
           ]
         },
         options: {
@@ -161,7 +260,6 @@
             tooltip: {
               callbacks: {
                 footer: (items) => {
-                  // total = presentes + ausentes en ese día
                   const idx = items[0].dataIndex;
                   const total = (presentes[idx] ?? 0) + (ausentes[idx] ?? 0);
                   return `Total: ${total}`;
@@ -172,18 +270,75 @@
           }
         }
       });
-    } catch (e) {
-      console.error(e);
-      // Si falla, no hacemos nada más; el área del gráfico queda vacía.
     }
-  }
 
-  async function init() {
-    await Promise.all([loadToday(), loadLast10()]);
-    // Auto-refresh liviano cada 30s (podés ajustar o quitar)
-    setInterval(loadToday, 30000);
-  }
-  init();
-</script>
+    // ---------- Gráfico horas trabajadas últimos 10 días ----------
+    let chartHoras;
+    async function loadHoras() {
+      const defaultData = [
+        { fecha: '2025-08-30', horas: 6 },
+        { fecha: '2025-08-31', horas: 7 },
+        { fecha: '2025-09-01', horas: 8 },
+        { fecha: '2025-09-02', horas: 9 },
+        { fecha: '2025-09-03', horas: 7 },
+        { fecha: '2025-09-04', horas: 8 },
+        { fecha: '2025-09-05', horas: 6 },
+        { fecha: '2025-09-06', horas: 7 },
+        { fecha: '2025-09-07', horas: 8 },
+        { fecha: '2025-09-08', horas: 7 },
+      ];
+
+      try {
+        const r = await fetch(`${API_BASE}/metrics/hours/last10`);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+
+        renderChartHoras(data.length ? data : defaultData);
+      } catch (e) {
+        console.error(e);
+        renderChartHoras(defaultData);
+      }
+    }
+
+    function renderChartHoras(data) {
+      const labels = data.map(x => x.fecha);
+      const horas = data.map(x => x.horas ?? 0);
+
+      const ctx = document.getElementById('chartHoras').getContext('2d');
+      if (chartHoras) chartHoras.destroy();
+      chartHoras = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Horas trabajadas', data: horas, borderColor: 'rgba(63, 82, 89, 0.9)', backgroundColor: 'rgba(143, 198, 178, 0.3)', fill: true, tension: 0.3 }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } }
+          },
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    }
+
+    async function init() {
+      await Promise.all([loadToday(), loadLast10(), loadHoras()]);
+      setInterval(loadToday, 30000);
+    }
+
+    function downloadChart(chart, filename) {
+      if (!chart) return;
+      const link = document.createElement('a');
+      link.href = chart.toBase64Image();
+      link.download = filename;
+      link.click();
+    }
+
+    init();
+  </script>
 </body>
-</html>

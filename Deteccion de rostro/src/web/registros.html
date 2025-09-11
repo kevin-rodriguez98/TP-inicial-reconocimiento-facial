@@ -78,37 +78,54 @@
 <script>
   const API_BASE = location.origin;
 
+  //Datos hardcodeados por defecto
+  const defaultData = [
+    { legajo: "1001", nombre: "Juan Pérez", ts_local: "2025-09-08T08:10:00", evento: "Entrada" },
+    { legajo: "1002", nombre: "María Gómez", ts_local: "2025-09-08T08:15:00", evento: "Entrada" },
+    { legajo: "1003", nombre: "Carlos López", ts_local: "2025-09-08T08:20:00", evento: "Entrada" },
+    { legajo: "1002", nombre: "María Gómez", ts_local: "2025-09-08T12:00:00", evento: "Salida" },
+    { legajo: "1001", nombre: "Juan Pérez", ts_local: "2025-09-08T17:30:00", evento: "Salida" }
+  ];
+
   async function cargarRegistros() {
     try {
       const res = await fetch(`${API_BASE}/attendance/today`);
       if (!res.ok) throw new Error("Error en la API");
       const data = await res.json();
 
-      const tbody = document.querySelector("#tabla tbody");
-      const mensaje = document.getElementById("mensaje");
-      tbody.innerHTML = "";
-
-      if (!data || data.length === 0) {
-        mensaje.textContent = "No hay registros de asistencia hoy.";
-        return;
-      } else {
-        mensaje.textContent = "";
-      }
-
-      data.forEach(r => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${r.legajo || "-"}</td>
-          <td>${r.nombre || "-"}</td>
-          <td>${new Date(r.ts_local || r.ts_utc).toLocaleTimeString()}</td>
-          <td>${r.evento || "-"}</td>
-        `;
-        tbody.appendChild(tr);
-      });
+      renderTabla(data.length ? data : defaultData, data.length === 0);
     } catch (err) {
       console.error(err);
-      document.getElementById("mensaje").textContent = "Error cargando registros.";
+      renderTabla(defaultData, false, true);
     }
+  }
+
+  function renderTabla(data, vacio = false, fallback = false) {
+    const tbody = document.querySelector("#tabla tbody");
+    const mensaje = document.getElementById("mensaje");
+    tbody.innerHTML = "";
+
+    if (vacio) {
+      mensaje.textContent = "No hay registros de asistencia hoy.";
+      return;
+    }
+
+    if (fallback) {
+      mensaje.textContent = "Mostrando datos de ejemplo (API no disponible).";
+    } else {
+      mensaje.textContent = "";
+    }
+
+    data.forEach(r => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${r.legajo || "-"}</td>
+        <td>${r.nombre || "-"}</td>
+        <td>${new Date(r.ts_local || r.ts_utc).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+        <td>${r.evento || "-"}</td>
+      `;
+      tbody.appendChild(tr);
+    });
   }
 
   cargarRegistros();
