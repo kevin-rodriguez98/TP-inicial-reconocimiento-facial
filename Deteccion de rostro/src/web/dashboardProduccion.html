@@ -81,11 +81,27 @@
   tr:nth-child(even) {
     background-color: #f8f8f8;
   }
+  header {
+    background: #2f3b3c;
+    color: #8fc6b2;
+    padding: 18px 20px;
+    border-bottom: 10px solid var(--brand);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+ }
 </style>
 </head>
 <body>
-  <h1>Dashboard de Producción</h1>
-  <div class="kpis">
+  <header>
+    <div>Dashboard de Producción</div>
+    <div>
+      <button class="btn" onclick="location.href='index.html'">⬅ Volver</button>
+    </div>
+  </header>
+ <main>
+    <h1>Indicadores</h1>
+ <div class="kpis">
     <div class="kpi"><h2 id="kpiTotal">0</h2><p>Total Producido</p></div>
     <div class="kpi"><h2 id="kpiDesperdicio">0</h2><p>Total Desperdicio</p></div>
     <div class="kpi"><h2 id="kpiPromedio">0</h2><p>Promedio Diario</p></div>
@@ -117,7 +133,7 @@
     </thead>
     <tbody id="tablaProduccion"></tbody>
   </table>
-
+ </main>
 <script>
   const produccion = [
     {"IDProduccion": 1, "Fecha": "2025-08-01", "Producto": "Galletas", "CantidadProducida": 1820, "Desperdicio": 96, "TiempoOperativo": "7h", "EmpleadosAsignados": [101, 102]},
